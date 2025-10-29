@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -287,89 +288,120 @@
 
     <script>
         function extractEventList() {
-            const input = document.getElementById('inputHTML').value;
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = input;
+    const input = document.getElementById('inputHTML').value;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = input;
 
-            const spans = tempDiv.querySelectorAll('li span.ant-typography');
-            let events = [];
-            spans.forEach(span => {
-                const text = span.textContent.trim();
-                // Ignore integration request prompts
-                if(!text.toLowerCase().includes('have a integration request')) {
-                    events.push(text);
+    // Try multiple strategies to extract event names
+    let events = [];
+    
+    // Strategy 1: Look for span elements with class "flex-1" (most common in your example)
+    const flexSpans = tempDiv.querySelectorAll('span.flex-1');
+    if (flexSpans.length > 0) {
+        flexSpans.forEach(span => {
+            const text = span.textContent.trim();
+            if (text && !text.toLowerCase().includes('have a integration request')) {
+                events.push(text);
+            }
+        });
+    }
+    
+    // Strategy 2: Look for img alt attributes as fallback
+    if (events.length === 0) {
+        const images = tempDiv.querySelectorAll('img[alt]');
+        images.forEach(img => {
+            const altText = img.getAttribute('alt').trim();
+            if (altText && !altText.toLowerCase().includes('have a integration request')) {
+                events.push(altText);
+            }
+        });
+    }
+    
+    // Strategy 3: Look for any text content in list items as last resort
+    if (events.length === 0) {
+        const listItems = tempDiv.querySelectorAll('li');
+        listItems.forEach(li => {
+            // Get text content and clean it up
+            const text = li.textContent.trim();
+            if (text && !text.toLowerCase().includes('have a integration request')) {
+                // Remove extra whitespace and newlines
+                const cleanText = text.replace(/\s+/g, ' ').trim();
+                if (cleanText) {
+                    events.push(cleanText);
                 }
+            }
+        });
+    }
+
+    document.getElementById('output').textContent = events.join('\n');
+}
+
+function extractIntegrationTask() {
+    const input = document.getElementById('output').textContent;
+    if(!input || input === 'Your converted output will appear here...') {
+        alert('Please extract Event List first!');
+        return;
+    }
+    const lines = input.split('\n').map(line => line.trim()).filter(line => line);
+    const singleLine = lines.join(' | ');
+
+    document.getElementById('output').textContent = singleLine;
+}
+
+function copyOutput() {
+    const outputText = document.getElementById('output').textContent;
+    
+    // Create a temporary textarea element
+    const textArea = document.createElement('textarea');
+    textArea.value = outputText;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = 0;
+    document.body.appendChild(textArea);
+    textArea.select();
+    
+    try {
+        // Try using the modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(outputText).then(function() {
+                showSuccessMessage();
+            }).catch(function() {
+                // Fallback to execCommand if clipboard API fails
+                fallbackCopyText(textArea);
             });
+        } else {
+            // Fallback for browsers that don't support clipboard API
+            fallbackCopyText(textArea);
+        }
+    } catch (err) {
+        console.error('Could not copy text: ', err);
+        alert('Failed to copy text. Please try again.');
+    } finally {
+        // Clean up
+        document.body.removeChild(textArea);
+    }
+}
 
-            document.getElementById('output').textContent = events.join('\n');
+function fallbackCopyText(textArea) {
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showSuccessMessage();
+        } else {
+            throw new Error('execCommand failed');
         }
+    } catch (err) {
+        console.error('Fallback copy failed: ', err);
+        alert('Failed to copy text. Please try again.');
+    }
+}
 
-        function extractIntegrationTask() {
-            const input = document.getElementById('output').textContent;
-            if(!input || input === 'Your converted output will appear here...') {
-                alert('Please extract Event List first!');
-                return;
-            }
-            const lines = input.split('\n').map(line => line.trim()).filter(line => line);
-            const singleLine = lines.join(' | ');
-
-            document.getElementById('output').textContent = singleLine;
-        }
-
-        function copyOutput() {
-            const outputText = document.getElementById('output').textContent;
-            
-            // Create a temporary textarea element
-            const textArea = document.createElement('textarea');
-            textArea.value = outputText;
-            textArea.style.position = 'fixed';
-            textArea.style.opacity = 0;
-            document.body.appendChild(textArea);
-            textArea.select();
-            
-            try {
-                // Try using the modern clipboard API first
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(outputText).then(function() {
-                        showSuccessMessage();
-                    }).catch(function() {
-                        // Fallback to execCommand if clipboard API fails
-                        fallbackCopyText(textArea);
-                    });
-                } else {
-                    // Fallback for browsers that don't support clipboard API
-                    fallbackCopyText(textArea);
-                }
-            } catch (err) {
-                console.error('Could not copy text: ', err);
-                alert('Failed to copy text. Please try again.');
-            } finally {
-                // Clean up
-                document.body.removeChild(textArea);
-            }
-        }
-        
-        function fallbackCopyText(textArea) {
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    showSuccessMessage();
-                } else {
-                    throw new Error('execCommand failed');
-                }
-            } catch (err) {
-                console.error('Fallback copy failed: ', err);
-                alert('Failed to copy text. Please try again.');
-            }
-        }
-        
-        function showSuccessMessage() {
-            const successMessage = document.getElementById('successMessage');
-            successMessage.classList.remove('hidden');
-            setTimeout(function() {
-                successMessage.classList.add('hidden');
-            }, 2000);
-        }
+function showSuccessMessage() {
+    const successMessage = document.getElementById('successMessage');
+    successMessage.classList.remove('hidden');
+    setTimeout(function() {
+        successMessage.classList.add('hidden');
+    }, 2000);
+}
     </script>
 </body>
 </html>
